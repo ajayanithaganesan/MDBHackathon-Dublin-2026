@@ -8,6 +8,20 @@ OpsMemory is an incident-intelligence workspace that turns resolved IT incidents
 
 The workspace brings incident intake, historical memory, grounded evidence, and **Resolve & remember** into one screen.
 
+### Evidence brief
+
+![Grounded incident evidence brief](rag%20output%20page.png)
+
+The evidence panel summarizes retrieved history, highlights the next action, and identifies the MongoDB-backed incident evidence used for the recommendation.
+
+### Similar incidents and resolution
+
+![Similar incidents and resolve workflow](similar%20inciden%20vector%20search%20output%20page.png)
+
+![Resolve and remember form](resolve%20and%20remember%20page.png)
+
+The workflow connects historical matches to the resolution form, then saves the new incident number and feedback for future searches.
+
 ## What is implemented
 
 - React and Vite incident workspace with responsive investigation, resolution, and feedback flows.
