@@ -1,13 +1,28 @@
 import { MongoClient } from "mongodb";
+import { MongoMemoryServer } from "mongodb-memory-server";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017";
+let uri = process.env.MONGODB_URI || null;
 const dbName = process.env.MONGODB_DATABASE || "opsmemory";
 
 let client = null;
 let db = null;
+let localMongoServer = null;
+
+export async function startDemoDatabase() {
+  if (process.env.MONGODB_URI) {
+    uri = process.env.MONGODB_URI;
+    return;
+  }
+
+  if (!localMongoServer) {
+    localMongoServer = await MongoMemoryServer.create({ instance: { dbName } });
+    uri = localMongoServer.getUri(dbName);
+    console.log("Started local in-memory MongoDB for the demo.");
+  }
+}
 
 /**
  * Connect to MongoDB and return the database instance.
@@ -18,6 +33,7 @@ export async function connectToDatabase() {
     return { client, db };
   }
 
+  uri ||= "mongodb://127.0.0.1:27017";
   client = new MongoClient(uri, {
     maxPoolSize: 20,
     serverSelectionTimeoutMS: 5000,
@@ -40,9 +56,16 @@ export async function closeDatabase() {
     db = null;
     console.log("MongoDB connection closed.");
   }
+
+  if (localMongoServer) {
+    await localMongoServer.stop();
+    localMongoServer = null;
+    uri = process.env.MONGODB_URI || null;
+  }
 }
 
 export default {
   connectToDatabase,
-  closeDatabase
+  closeDatabase,
+  startDemoDatabase
 };

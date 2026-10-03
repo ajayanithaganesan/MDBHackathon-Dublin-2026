@@ -5,8 +5,9 @@
   "main": "backend/src/server.js",
   "type": "module",
   "scripts": {
+    "dev": "concurrently -k -n API,WEB -c green,cyan \"node backend/src/server.js\" \"vite --config frontend/vite.config.js --host 127.0.0.1 frontend\"",
+    "build": "vite build frontend --config frontend/vite.config.js",
     "start": "node backend/src/server.js",
-    "dev": "node --watch backend/src/server.js",
     "seed": "node scripts/seed.js",
     "indexes": "node scripts/create-indexes.js",
     "embeddings": "node scripts/generate-embeddings.js",
@@ -14,9 +15,17 @@
     "test:search": "node scripts/test-search.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "mongodb": "^6.14.0"
+    "express": "^5.2.1",
+    "lucide-react": "^1.51.0",
+    "mongodb": "^6.14.0",
+    "mongodb-memory-server": "^11.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "vite": "^8.3.2"
   }
 }

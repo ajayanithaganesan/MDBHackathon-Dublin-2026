@@ -58,6 +58,18 @@ export async function setIncidentCounter(db, startingSequence, targetYear = new 
   );
 }
 
+export async function ensureIncidentCounterAtLeast(db, minimumSequence, targetYear = new Date().getFullYear()) {
+  const counterId = `incident_${targetYear}`;
+  await db.collection("counters").updateOne(
+    { _id: counterId },
+    {
+      $max: { sequence: minimumSequence },
+      $set: { year: targetYear, updatedAt: new Date() }
+    },
+    { upsert: true }
+  );
+}
+
 /**
  * Inspects current counter value without incrementing.
  *
@@ -73,5 +85,6 @@ export async function getCurrentSequence(db, targetYear = new Date().getFullYear
 export default {
   getNextIncidentNumber,
   setIncidentCounter,
+  ensureIncidentCounterAtLeast,
   getCurrentSequence
 };

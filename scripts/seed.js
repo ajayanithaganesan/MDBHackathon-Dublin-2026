@@ -1,5 +1,5 @@
 import { connectToDatabase, closeDatabase } from "../backend/src/db/connection.js";
-import { setIncidentCounter } from "../backend/src/services/counterService.js";
+import { ensureIncidentCounterAtLeast } from "../backend/src/services/counterService.js";
 
 /**
  * 12 Curated Synthetic IT Incidents for OpsMemory Search Engine Seed Dataset
@@ -211,7 +211,7 @@ export const seedIncidents = [
 /**
  * Seeds synthetic incidents and synchronizes the atomic counter.
  */
-export async function seedDatabase() {
+export async function seedDatabase({ closeConnection = true } = {}) {
   const { client, db } = await connectToDatabase();
 
   try {
@@ -241,7 +241,7 @@ export async function seedDatabase() {
 
     // Initialize atomic sequence counter to the highest seed number
     const maxSeqNumber = seedIncidents.length;
-    await setIncidentCounter(db, maxSeqNumber, 2026);
+    await ensureIncidentCounterAtLeast(db, maxSeqNumber, 2026);
     console.log(`\n Atomic counter initialized to sequence: ${maxSeqNumber} (Next will be: INC-2026-00${maxSeqNumber + 1})`);
 
     // Add initial feedback samples to demonstrate analytics
@@ -277,7 +277,9 @@ export async function seedDatabase() {
     console.error("Data seeding failed:", error);
     throw error;
   } finally {
-    await closeDatabase();
+    if (closeConnection) {
+      await closeDatabase();
+    }
   }
 }
 

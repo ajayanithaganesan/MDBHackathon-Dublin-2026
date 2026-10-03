@@ -1,86 +1,235 @@
-/**
- * OpsMemory Backend API
- *
- * Express server exposing the search/retrieval layer (Person 2).
- * Person 3 (AI/RAG) and Person 1's resolve workflow mount their routes here.
- */
-
 import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { closeDatabase, connectToDatabase, startDemoDatabase } from "./db/connection.js";
+import { setupDatabase } from "./db/setup.js";
+import { getNextIncidentNumber } from "./services/counterService.js";
+import {
+  cosineSimilarity,
+  createEmbeddings,
+  generateGroundedBrief,
+  incidentEmbeddingText,
+  indexMissingIncidentEmbeddings
+} from "./services/localRagService.js";
+import { seedDatabase } from "../../scripts/seed.js";
 
-import { connectToDatabase, closeDatabase } from "./db/connection.js";
-import { isEmbeddingEnabled } from "./services/embeddingService.js";
-import searchRoutes from "./routes/searchRoutes.js";
+const strongSemanticThreshold = 0.70;
+const strongCombinedThreshold = 0.60;
+const strongTextThreshold = 8;
 
-dotenv.config();
+const app = express();
+const port = Number(process.env.PORT || 5000);
+const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = path.resolve(currentDirectory, "../../../frontend/dist");
 
-const PORT = process.env.PORT || 5000;
+app.disable("x-powered-by");
+app.use(express.json({ limit: "1mb" }));
 
-export function createApp() {
-  const app = express();
+app.get("/api/health", async (_request, response) => {
+  try {
+    const { db } = await connectToDatabase();
+    await db.command({ ping: 1 });
+    response.json({ status: "ok", database: db.databaseName });
+  } catch (error) {
+    response.status(503).json({ error: error.message });
+  }
+});
 
-  app.use(cors());
-  app.use(express.json({ limit: "1mb" }));
+app.get("/api/stats", async (_request, response, next) => {
+  try {
+    const { db } = await connectToDatabase();
+    const [total, services, helpful, notHelpful] = await Promise.all([
+      db.collection("incidents").countDocuments({ status: "resolved" }),
+      db.collection("incidents").distinct("service", { status: "resolved" }),
+      db.collection("feedback").countDocuments({ rating: "helpful" }),
+      db.collection("feedback").countDocuments({ rating: "not_helpful" })
+    ]);
+    response.json({ total, serviceCount: services.length, helpful, notHelpful });
+  } catch (error) {
+    next(error);
+  }
+});
 
-  app.get("/api/health", async (req, res) => {
-    const health = {
-      status: "ok",
-      mongo: "unknown",
-      embeddings: isEmbeddingEnabled() ? "enabled" : "disabled"
+app.get("/api/incidents", async (request, response, next) => {
+  try {
+    const { db } = await connectToDatabase();
+    const query = String(request.query.q || "").trim();
+    const limit = Math.min(Math.max(Number(request.query.limit) || 8, 1), 25);
+    const collection = db.collection("incidents");
+    let textMatches;
+
+    if (query) {
+      textMatches = await collection.find(
+        { $text: { $search: query }, status: "resolved" },
+        { projection: { score: { $meta: "textScore" } } }
+      ).sort({ score: { $meta: "textScore" }, resolvedAt: -1 }).limit(25).toArray();
+    } else {
+      textMatches = await collection.find({ status: "resolved" })
+        .sort({ resolvedAt: -1 }).limit(limit).toArray();
+    }
+
+    if (!query) {
+      return response.json({ incidents: textMatches, query, mode: "text" });
+    }
+
+    try {
+      const [queryEmbedding] = await createEmbeddings([query]);
+      const vectorMatches = await collection.find({ status: "resolved", embedding: { $exists: true } }).toArray();
+      if (vectorMatches.length > 0) {
+        const textScores = new Map(textMatches.map((item) => [String(item._id), item.score || 0]));
+        const incidents = vectorMatches.map(({ embedding, ...item }) => {
+          const textScore = textScores.get(String(item._id)) || 0;
+          const semanticScore = Math.max(0, cosineSimilarity(queryEmbedding, embedding));
+          const textRelevance = textScore / (textScore + 12);
+          return {
+            ...item,
+            score: semanticScore * 0.72 + textRelevance * 0.28,
+            semanticScore,
+            textScore,
+            textRelevance
+          };
+        }).sort((left, right) => right.score - left.score).slice(0, limit);
+        const strongMatches = incidents.filter((item) => item.semanticScore >= strongSemanticThreshold && item.score >= strongCombinedThreshold);
+        const hasStrongMatch = strongMatches.length > 0;
+        return response.json({
+          incidents: hasStrongMatch ? strongMatches : incidents.slice(0, 2),
+          query,
+          mode: "local-hybrid",
+          confidence: hasStrongMatch ? "high" : "low",
+          strongMatch: hasStrongMatch
+        });
+      }
+    } catch (error) {
+      console.warn(`Local semantic retrieval unavailable: ${error.message}`);
+    }
+
+    const strongTextMatches = textMatches.filter((item) => (item.score || 0) >= strongTextThreshold);
+    const hasStrongTextMatch = strongTextMatches.length > 0;
+    response.json({
+      incidents: (hasStrongTextMatch ? strongTextMatches : textMatches.slice(0, 2))
+        .slice(0, limit)
+        .map((item) => ({ ...item, textScore: item.score || 0 })),
+      query,
+      mode: "text",
+      confidence: hasStrongTextMatch ? "high" : "low",
+      strongMatch: hasStrongTextMatch
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/brief", async (request, response, next) => {
+  try {
+    const ids = Array.isArray(request.body.retrievedIncidents)
+      ? request.body.retrievedIncidents.map(String).slice(0, 3)
+      : [];
+    const { db } = await connectToDatabase();
+    const evidence = await db.collection("incidents")
+      .find({ incidentNumber: { $in: ids }, status: "resolved" })
+      .toArray();
+    const brief = await generateGroundedBrief(request.body.incident || {}, evidence, {
+      strongMatch: request.body.strongMatch === true
+    });
+    response.json({ brief });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/incidents/resolve", async (request, response, next) => {
+  try {
+    const fields = ["title", "description", "service", "environment", "severity", "rootCause", "resolution"];
+    const incident = Object.fromEntries(fields.map((field) => [field, String(request.body[field] || "").trim()]));
+    const missing = fields.filter((field) => !incident[field]);
+    if (missing.length) {
+      return response.status(400).json({ error: `Required fields: ${missing.join(", ")}` });
+    }
+
+    const { db } = await connectToDatabase();
+    const now = new Date();
+    const incidentNumber = await getNextIncidentNumber(db);
+    const document = {
+      ...incident,
+      incidentNumber,
+      symptoms: Array.isArray(request.body.symptoms) ? request.body.symptoms.map(String).slice(0, 12) : [],
+      errorMessage: String(request.body.errorMessage || "").trim() || null,
+      resolutionSummary: String(request.body.resolutionSummary || incident.resolution).trim(),
+      status: "resolved",
+      createdAt: now,
+      resolvedAt: now
     };
 
     try {
-      const { db } = await connectToDatabase();
-      await db.command({ ping: 1 });
-      health.mongo = "connected";
+      [document.embedding] = await createEmbeddings([incidentEmbeddingText(document)]);
     } catch (error) {
-      health.status = "degraded";
-      health.mongo = "unreachable";
-      health.detail = error.message;
+      console.warn(`Incident saved without a local embedding: ${error.message}`);
+    }
+    await db.collection("incidents").insertOne(document);
+    response.status(201).json({ incident: document });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/feedback", async (request, response, next) => {
+  try {
+    const { incidentNumber, rating } = request.body;
+    if (!incidentNumber || !["helpful", "not_helpful"].includes(rating)) {
+      return response.status(400).json({ error: "A resolved incident and a valid rating are required." });
     }
 
-    res.status(health.mongo === "connected" ? 200 : 503).json(health);
-  });
+    const { db } = await connectToDatabase();
+    await db.collection("feedback").insertOne({
+      incidentNumber: String(incidentNumber),
+      rating,
+      comment: String(request.body.comment || "").trim(),
+      retrievedIncidents: Array.isArray(request.body.retrievedIncidents)
+        ? request.body.retrievedIncidents.map(String).slice(0, 10)
+        : [],
+      createdAt: new Date()
+    });
+    response.status(201).json({ saved: true });
+  } catch (error) {
+    next(error);
+  }
+});
 
-  app.use("/api", searchRoutes);
-
-  // Central error handler keeps API responses JSON-shaped.
-  app.use((error, req, res, next) => {
-    console.error("[api] Unhandled error:", error);
-    if (res.headersSent) return next(error);
-    res.status(500).json({ error: error.message || "Internal server error" });
-  });
-
-  return app;
-}
+app.use(express.static(frontendDist));
+app.use((error, _request, response, _next) => {
+  console.error(error);
+  response.status(500).json({ error: "The request could not be completed." });
+});
 
 async function start() {
+  await startDemoDatabase();
+  const { db } = await connectToDatabase();
+  await setupDatabase(db);
+  await seedDatabase({ closeConnection: false });
+  console.log("Generating local embeddings for incidents if needed...");
   try {
-    await connectToDatabase();
+    const indexed = await indexMissingIncidentEmbeddings(db);
+    if (indexed) console.log(`Created local embeddings for ${indexed} incidents.`);
   } catch (error) {
-    console.warn(`[startup] MongoDB not reachable yet: ${error.message}`);
-    console.warn("[startup] Server will start; /api/health will report degraded until it connects.");
+    console.warn(`Local semantic search unavailable: ${error.message}`);
   }
 
-  const app = createApp();
-  const server = app.listen(PORT, () => {
-    console.log(`OpsMemory API listening on http://localhost:${PORT}`);
-    console.log(`  POST http://localhost:${PORT}/api/incidents/search`);
-    console.log(`  GET  http://localhost:${PORT}/api/health`);
+  app.listen(port, "127.0.0.1", () => {
+    console.log(`OpsMemory API listening at http://127.0.0.1:${port}`);
   });
+}
 
-  const shutdown = async () => {
-    server.close();
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, async () => {
     await closeDatabase();
     process.exit(0);
-  };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  });
 }
 
-if (process.argv[1]?.endsWith("server.js")) {
-  start();
+try {
+  await start();
+} catch (error) {
+  console.error("OpsMemory failed to start:", error);
+  await closeDatabase();
+  process.exit(1);
 }
-
-export default createApp;
