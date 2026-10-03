@@ -1,0 +1,1945 @@
+# OpsMemory — Frontend Design & Implementation Specification
+
+## Goal
+
+Build a premium, highly polished frontend for OpsMemory that feels like a real enterprise AI operations product.
+
+The frontend must NOT look like:
+
+- a generic ChatGPT clone
+- a basic CRUD dashboard
+- a template with a sidebar and cards
+- a page containing only a textarea and an AI response
+
+It should feel like a purpose-built **AI Incident Intelligence / SRE Operations Center**.
+
+The central visual story is:
+
+> **Observe → Investigate → Retrieve Memory → Understand → Resolve → Remember → Improve**
+
+The UI should make MongoDB's role visible without turning the interface into a technical database demo.
+
+---
+
+# 1. Product Identity
+
+## Product name
+
+**OpsMemory**
+
+## Tagline
+
+**AI Incident Intelligence That Learns From Every Fix**
+
+## Supporting message
+
+> Turn historical incidents into actionable operational memory.
+
+---
+
+# 2. Visual Direction
+
+Use a premium dark operations-console aesthetic.
+
+### Overall feel
+
+- futuristic
+- professional
+- technical
+- clean
+- high information density without feeling crowded
+- subtle glass effects
+- strong hierarchy
+- restrained gradients
+- animated status indicators
+- crisp typography
+- excellent spacing
+- responsive
+- accessible
+
+Avoid excessive neon effects.
+
+The application should look like something an engineering team could actually use every day.
+
+---
+
+# 3. Color System
+
+Use CSS variables so the theme can be changed centrally.
+
+```css
+:root {
+  --bg-primary: #07111f;
+  --bg-secondary: #0b1728;
+  --bg-tertiary: #101f33;
+
+  --surface: rgba(15, 30, 50, 0.78);
+  --surface-solid: #0f1d30;
+  --surface-hover: #142640;
+
+  --border: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.24);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #a9b7ca;
+  --text-muted: #718198;
+
+  --accent: #63e6be;
+  --accent-secondary: #60a5fa;
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+  --info: #60a5fa;
+  --purple: #a78bfa;
+
+  --shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.22);
+  --shadow-strong: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+```
+
+The exact colors can be adjusted, but the application should maintain a consistent semantic system.
+
+---
+
+# 4. Typography
+
+Recommended:
+
+- Inter
+- Geist
+- IBM Plex Sans
+
+Use a monospace font for:
+
+- incident IDs
+- timestamps
+- error codes
+- metrics
+- infrastructure identifiers
+
+Example:
+
+```text
+INC-2026-0044
+HTTP 502
+98.7%
+14:32:07
+```
+
+---
+
+# 5. Global Application Layout
+
+The application should have:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ GLOBAL HEADER                                                │
+├──────────────┬──────────────────────────────────────────────┤
+│              │                                              │
+│ SIDEBAR      │ MAIN CONTENT                                 │
+│              │                                              │
+│ Navigation   │ Page header                                  │
+│ Workspace    │                                              │
+│ Memory       │ Content                                      │
+│ Incidents    │                                              │
+│ Analytics    │                                              │
+│ Runbooks     │                                              │
+│              │                                              │
+│              │                                              │
+├──────────────┴──────────────────────────────────────────────┤
+│ STATUS / FOOTER                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+On mobile:
+
+```text
+Header
+Content
+Bottom navigation / drawer
+```
+
+---
+
+# 6. Global Header
+
+The header should contain:
+
+### Left
+
+OpsMemory logo:
+
+```text
+◈ OPSMEMORY
+AI INCIDENT INTELLIGENCE
+```
+
+### Center
+
+Global search:
+
+```text
+⌕ Search incidents, errors, services...
+```
+
+Keyboard shortcut:
+
+```text
+⌘ K
+```
+
+### Right
+
+- MongoDB connection indicator
+- AI status
+- notifications
+- help
+- user/avatar
+- workspace selector
+
+Example:
+
+```text
+● MongoDB Connected
+● AI Ready
+```
+
+The indicators should be subtle.
+
+---
+
+# 7. Sidebar
+
+Navigation:
+
+```text
+OVERVIEW
+
+◉ Command Center
+◈ Investigate
+▣ Incidents
+◎ Incident Memory
+◌ Analytics
+
+KNOWLEDGE
+
+▤ Runbooks
+◫ Services
+◇ Patterns
+
+SYSTEM
+
+⚙ Settings
+? Help
+```
+
+At the bottom:
+
+```text
+MEMORY HEALTH
+
+██████████████████░░  91%
+
+2,481 searchable memories
+```
+
+This visually reinforces the core product idea.
+
+---
+
+# 8. Footer / Status Bar
+
+A thin persistent footer can show:
+
+```text
+OpsMemory
+● Systems operational
+
+MongoDB Atlas
+● Connected
+
+Last sync
+14:32:08
+
+v1.0.0
+```
+
+Do not make it visually heavy.
+
+---
+
+# 9. Command Center Dashboard
+
+This is the default landing page.
+
+## Hero
+
+```text
+Good afternoon, Operations Team
+
+Your infrastructure memory is ready.
+
+[ + Investigate Incident ]
+```
+
+Below:
+
+```text
+47
+TOTAL INCIDENTS
+
+43
+RESOLVED
+
+8.4m
+AVG MTTR
+
+91%
+AI USEFULNESS
+```
+
+Use animated counters when the page loads.
+
+---
+
+# 10. KPI Cards
+
+Create visually distinctive metric cards.
+
+### Total Incidents
+
+Show:
+
+```text
+47
+
++12% this week
+
+▁▂▃▂▅▆▇
+```
+
+### Average MTTR
+
+```text
+8.4 min
+
+↓ 18% vs previous period
+
+████████████████
+```
+
+### AI Recommendation Accuracy / Usefulness
+
+```text
+91%
+
++7%
+
+██████████████████░░
+```
+
+Do not claim real accuracy unless it is actually calculated from stored feedback.
+
+Use the label:
+
+**Recommendation usefulness**
+
+rather than "AI accuracy".
+
+---
+
+# 11. Incident Activity Chart
+
+Large chart:
+
+```text
+INCIDENT ACTIVITY
+
+50 ┤                 ╭──╮
+40 ┤        ╭──╮    ╭╯  ╰╮
+30 ┤   ╭────╯  ╰────╯    ╰
+20 ┤───╯
+10 ┤
+   └────────────────────────
+     Mon Tue Wed Thu Fri Sat
+```
+
+Allow:
+
+- 24h
+- 7d
+- 30d
+
+Use actual MongoDB aggregation data when connected.
+
+For the demo, seed realistic values.
+
+---
+
+# 12. Severity Distribution
+
+Use a horizontal bar visualization:
+
+```text
+SEVERITY
+
+P1  ████████░░  8
+P2  ███████████████  15
+P3  █████████████████████  21
+P4  ███  3
+```
+
+Hover should show:
+
+- count
+- percentage
+
+---
+
+# 13. Incident Lifecycle Funnel
+
+Visualize:
+
+```text
+NEW
+  ↓
+INVESTIGATING
+  ↓
+RECOMMENDED
+  ↓
+RESOLVED
+  ↓
+REMEMBERED
+```
+
+Example:
+
+```text
+New             12
+Investigating    7
+Recommended     10
+Resolved        43
+Remembered      41
+```
+
+This makes the product's workflow immediately understandable.
+
+---
+
+# 14. Recent Incidents Table
+
+Columns:
+
+```text
+INCIDENT
+SERVICE
+SEVERITY
+STATUS
+AI MATCH
+MTTR
+CREATED
+```
+
+Example:
+
+```text
+INC-2026-0044
+Payment API
+P1
+Resolved
+94%
+6m
+2 min ago
+```
+
+Status badges:
+
+- Investigating
+- Analyzing
+- Resolved
+- Needs Review
+- No Match
+
+Rows should be clickable.
+
+---
+
+# 15. Live Activity Feed
+
+Right side panel:
+
+```text
+LIVE ACTIVITY
+
+● 14:32
+INC-2026-0044 resolved
+
+● 14:28
+AI recommendation generated
+
+● 14:24
+New incident created
+
+● 14:20
+Memory indexed
+
+● 14:18
+Hybrid Search completed
+```
+
+Animate new entries subtly.
+
+---
+
+# 16. Main Investigation Experience
+
+This is the most important screen.
+
+The page should feel like a professional incident command center.
+
+Header:
+
+```text
+INVESTIGATE INCIDENT
+
+Find what happened.
+Understand why.
+Learn from what worked before.
+```
+
+Top-right:
+
+```text
+[ Save Draft ]
+[ Clear ]
+```
+
+---
+
+# 17. Incident Input Panel
+
+Use a large structured form.
+
+Fields:
+
+### Service
+
+```text
+[ Payment API                         ▾ ]
+```
+
+### Environment
+
+```text
+[ Production                         ▾ ]
+```
+
+### Severity
+
+Buttons:
+
+```text
+[P1] [P2] [P3] [P4]
+```
+
+### Description
+
+Large text area.
+
+### Symptoms
+
+Use removable chips:
+
+```text
+CPU 97%   ×
+Latency 4.8s   ×
+Connection pool exhausted   ×
+```
+
+### Error message
+
+Monospace field:
+
+```text
+Connection pool exhausted
+```
+
+---
+
+# 18. Investigation Button
+
+Large primary CTA:
+
+```text
+◈ INVESTIGATE INCIDENT
+```
+
+While processing:
+
+```text
+◌ Analyzing incident...
+✓ Incident normalized
+✓ Searching operational memory
+◌ Ranking evidence...
+◌ Generating recommendation...
+```
+
+This makes the AI workflow visible.
+
+---
+
+# 19. Search Intelligence Panel
+
+After investigation:
+
+```text
+SEARCH INTELLIGENCE
+
+Hybrid Search
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Semantic relevance     91%
+Keyword relevance      88%
+Service match          100%
+Environment match      100%
+
+Overall evidence       HIGH
+```
+
+Use multiple progress bars.
+
+This is one of the places where "lots of bars" is useful because the bars explain actual retrieval signals.
+
+---
+
+# 20. Evidence Results
+
+Show three to five cards.
+
+Example:
+
+```text
+┌──────────────────────────────────────────┐
+│ INC-2026-0007                         91% │
+│ Connection Pool Saturation               │
+│                                          │
+│ ✓ Similar symptoms                       │
+│ ✓ Same service                           │
+│ ✓ Matching error                         │
+│                                          │
+│ Resolution                               │
+│ Increased pool size 50 → 100             │
+│                                          │
+│ Outcome                                  │
+│ ✓ Successful · 6 minutes                 │
+│                                          │
+│ [ View Incident ]                        │
+└──────────────────────────────────────────┘
+```
+
+Use a visual relevance meter:
+
+```text
+RELEVANCE
+██████████████████░░ 91%
+```
+
+---
+
+# 21. AI Diagnosis Panel
+
+Use a large featured card.
+
+```text
+AI INCIDENT ANALYSIS
+
+LIKELY CAUSE
+
+Connection pool exhaustion
+
+CONFIDENCE
+██████████████████░░ 91%
+
+WHY?
+
+• Connection pool error matches 3 historical incidents
+• API latency pattern is similar
+• Same service has previous successful remediation
+
+RECOMMENDED INVESTIGATION
+
+01  Inspect active database connections
+02  Compare connections with pool limit
+03  Check recent deployment
+04  Increase pool size if saturation is confirmed
+```
+
+---
+
+# 22. Recommendation Safety
+
+Add a clear indicator:
+
+```text
+● GROUNDED RECOMMENDATION
+
+Based on 3 historical incidents
+and 1 relevant runbook.
+```
+
+If confidence is low:
+
+```text
+⚠ LOW CONFIDENCE
+
+No strong historical match was found.
+
+Human verification recommended.
+```
+
+This is essential for the difficult-case demo.
+
+---
+
+# 23. AI Reasoning / Evidence Drawer
+
+Add a collapsible section:
+
+```text
+WHY DID OPSMEMORY RECOMMEND THIS?
+
+⌄ Search evidence
+
+⌄ Historical resolutions
+
+⌄ Runbook evidence
+
+⌄ Matching signals
+```
+
+Do not expose hidden chain-of-thought.
+
+Show concise, user-facing evidence and retrieval signals only.
+
+---
+
+# 24. Resolution Workspace
+
+After investigation, show:
+
+```text
+RESOLUTION
+
+What actually fixed the incident?
+
+┌──────────────────────────────────────────┐
+│ Increased connection pool size from     │
+│ 50 to 100.                               │
+└──────────────────────────────────────────┘
+
+Resolution time
+
+[ 6 ] minutes
+
+Outcome
+
+[ ✓ Successful ] [ Partial ] [ Failed ]
+```
+
+---
+
+# 25. Feedback UI
+
+Make feedback feel important.
+
+```text
+WAS THE AI RECOMMENDATION USEFUL?
+
+        ☆ ☆ ☆ ☆ ☆
+
+[ Yes, it helped ]
+[ Partially useful ]
+[ No, it was incorrect ]
+
+Additional feedback
+[_______________________________]
+```
+
+After selection:
+
+```text
+✓ Feedback recorded
+```
+
+---
+
+# 26. Resolve & Remember
+
+This should be the strongest button on the entire application.
+
+```text
+┌──────────────────────────────────────────┐
+│        ✓ RESOLVE & REMEMBER              │
+│                                          │
+│ Save this resolution to operational      │
+│ memory so future incidents can benefit   │
+│ from it.                                 │
+└──────────────────────────────────────────┘
+```
+
+When clicked:
+
+### Step 1
+
+```text
+Saving incident...
+```
+
+### Step 2
+
+```text
+Generating incident number...
+```
+
+### Step 3
+
+```text
+Indexing operational memory...
+```
+
+### Step 4
+
+```text
+Complete
+```
+
+Then display:
+
+```text
+┌──────────────────────────────────────────┐
+│ ✓ INCIDENT REMEMBERED                    │
+│                                          │
+│ INC-2026-0044                            │
+│                                          │
+│ This resolution is now part of           │
+│ OpsMemory's future knowledge.             │
+│                                          │
+│ [ View Incident ] [ Investigate Another ]│
+└──────────────────────────────────────────┘
+```
+
+---
+
+# 27. Incident Detail Page
+
+Header:
+
+```text
+INC-2026-0044
+
+Payment API connection pool exhaustion
+
+● RESOLVED
+P1
+Production
+```
+
+Tabs:
+
+```text
+Overview
+Timeline
+AI Analysis
+Evidence
+Resolution
+Feedback
+Memory
+```
+
+---
+
+# 28. Incident Timeline
+
+Create a beautiful vertical timeline:
+
+```text
+14:24
+● Incident created
+
+14:24
+│ Hybrid Search started
+
+14:25
+│ 3 relevant incidents found
+
+14:25
+│ AI recommendation generated
+
+14:31
+│ Engineer applied resolution
+
+14:32
+│ Feedback recorded
+
+14:32
+● Incident remembered
+```
+
+Use glowing timeline dots.
+
+---
+
+# 29. Memory Page
+
+This page should visually differentiate OpsMemory from a normal incident tracker.
+
+Header:
+
+```text
+OPERATIONAL MEMORY
+
+Everything your team has learned from previous incidents.
+```
+
+Stats:
+
+```text
+2,481 memories
+91% searchable
+318 successful resolutions
+```
+
+Search field:
+
+```text
+Search operational memory...
+```
+
+Filters:
+
+- service
+- severity
+- environment
+- outcome
+- date
+- similarity
+
+---
+
+# 30. Memory Graph / Relationship View
+
+If feasible, create a visual relationship section:
+
+```text
+              Connection Pool
+                    │
+          ┌─────────┼─────────┐
+          │         │         │
+       INC-44     INC-31    INC-18
+          │         │         │
+       Payment    API       Orders
+```
+
+This does not need to be a real graph database.
+
+It can be a visual representation of related incidents returned by search.
+
+---
+
+# 31. Analytics Page
+
+Include multiple visualization sections.
+
+### MTTR trend
+
+Line chart.
+
+### Incidents by severity
+
+Bar chart.
+
+### Incidents by service
+
+Horizontal bars.
+
+```text
+Payment API      █████████████████ 17
+Auth Service     ███████████ 11
+VMware Horizon   ████████ 8
+Database         ██████ 6
+Network          ███ 3
+```
+
+### Resolution outcomes
+
+Donut chart:
+
+```text
+Successful
+Partial
+Failed
+```
+
+### Recommendation usefulness
+
+```text
+5 ★ ███████████████████
+4 ★ ████████
+3 ★ ███
+2 ★
+1 ★
+```
+
+Only display metrics that are calculated from real stored data.
+
+---
+
+# 32. Runbooks Page
+
+Runbooks should appear as supporting operational knowledge.
+
+Card:
+
+```text
+CONNECTION POOL EXHAUSTION
+
+Service:
+Payment API
+
+Severity:
+P1 / P2
+
+Common symptoms:
+• Database timeout
+• High latency
+• Connection pool exhausted
+
+[ Open Runbook ]
+```
+
+Allow searching and filtering.
+
+---
+
+# 33. Services Page
+
+Display services as operational cards:
+
+```text
+PAYMENT API
+● Healthy
+
+Incidents: 17
+Avg MTTR: 7.2m
+Last incident: 2h ago
+
+██████████████████░░
+Reliability trend
+```
+
+Other services:
+
+- Authentication
+- Database
+- VMware Horizon
+- Network
+- Storage
+
+Use seeded data initially.
+
+---
+
+# 34. Patterns Page
+
+Show discovered incident patterns.
+
+Example:
+
+```text
+TOP INCIDENT PATTERNS
+
+01
+Connection pool exhaustion
+17 incidents
+82% successful remediation
+
+02
+Storage latency
+11 incidents
+
+03
+Authentication failures
+9 incidents
+```
+
+Again, percentages must come from actual data.
+
+---
+
+# 35. Global Search / Command Palette
+
+Implement keyboard shortcut:
+
+```text
+⌘ K
+```
+
+Search:
+
+```text
+Search anything...
+
+Incidents
+Runbooks
+Services
+Memory
+Error codes
+```
+
+Examples:
+
+```text
+"connection pool"
+"INC-2026-0044"
+"Payment API"
+"HTTP 502"
+```
+
+---
+
+# 36. Notifications
+
+Notification drawer:
+
+```text
+NOTIFICATIONS
+
+✓ Incident INC-2026-0044 remembered
+
+● New incident created
+
+⚠ Low-confidence recommendation
+
+✓ MongoDB memory indexed
+```
+
+Keep notifications meaningful.
+
+---
+
+# 37. Loading States
+
+Never show blank screens.
+
+Use skeletons:
+
+```text
+████████████████
+██████████
+████████████████████
+```
+
+For AI processing, use a deliberate stepper:
+
+```text
+✓ Parsing incident
+✓ Searching memory
+◌ Ranking evidence
+○ Generating recommendation
+○ Preparing response
+```
+
+---
+
+# 38. Error States
+
+Example MongoDB failure:
+
+```text
+DATABASE CONNECTION LOST
+
+OpsMemory cannot access operational memory right now.
+
+Last successful connection:
+14:31:22
+
+[ Retry Connection ]
+```
+
+AI failure:
+
+```text
+AI ANALYSIS UNAVAILABLE
+
+Historical incident search completed successfully.
+
+You can still review the matching incidents manually.
+
+[ View Evidence ]
+```
+
+This is much better than a generic "Something went wrong."
+
+---
+
+# 39. Empty States
+
+Example:
+
+```text
+NO HISTORICAL MATCHES
+
+This incident appears to be new to OpsMemory.
+
+Try:
+• adding more symptoms
+• adding the exact error message
+• checking the service selection
+
+[ Continue With Investigation ]
+```
+
+---
+
+# 40. Difficult Case UI
+
+When no strong match exists:
+
+```text
+┌─────────────────────────────────────────┐
+│ ⚠ NEW INCIDENT PATTERN                  │
+│                                         │
+│ No strong historical match found.       │
+│                                         │
+│ Best match: 54%                         │
+│ ███████████░░░░░░░░                    │
+│                                         │
+│ OpsMemory recommends human verification │
+│ before taking remediation action.       │
+└─────────────────────────────────────────┘
+```
+
+This should be a deliberate part of the demo.
+
+---
+
+# 41. Animations
+
+Use animation carefully.
+
+Good animations:
+
+- card entrance
+- metric counter
+- progress bars
+- search results appearing
+- timeline events
+- button loading
+- toast notifications
+- subtle hover elevation
+- active navigation indicator
+
+Avoid:
+
+- constant pulsing
+- excessive bouncing
+- distracting page transitions
+- giant animated backgrounds
+
+The application should feel fast.
+
+---
+
+# 42. Micro-interactions
+
+Add:
+
+- copy incident number button
+- copy error button
+- tooltip for technical terms
+- hover state for incident cards
+- expandable evidence
+- keyboard navigation
+- confirmation before destructive actions
+- toast after successful actions
+
+---
+
+# 43. Responsive Design
+
+Desktop is the primary hackathon target.
+
+Still support:
+
+### Laptop
+
+Full sidebar.
+
+### Tablet
+
+Collapsible sidebar.
+
+### Mobile
+
+Header + bottom navigation.
+
+The investigation form should become a single-column layout.
+
+---
+
+# 44. Accessibility
+
+Implement:
+
+- semantic HTML
+- keyboard navigation
+- visible focus states
+- sufficient contrast
+- aria-labels
+- accessible form labels
+- no information conveyed by color alone
+
+---
+
+# 45. Component Architecture
+
+Recommended components:
+
+```text
+components/
+├── layout/
+│   ├── AppShell
+│   ├── Header
+│   ├── Sidebar
+│   ├── FooterStatus
+│   └── CommandPalette
+│
+├── dashboard/
+│   ├── MetricCard
+│   ├── ActivityChart
+│   ├── SeverityChart
+│   ├── LifecycleFunnel
+│   ├── RecentIncidents
+│   └── LiveActivity
+│
+├── investigation/
+│   ├── IncidentForm
+│   ├── InvestigationProgress
+│   ├── SearchIntelligence
+│   ├── EvidenceCard
+│   ├── DiagnosisCard
+│   ├── RecommendationList
+│   ├── ResolutionForm
+│   ├── FeedbackPanel
+│   └── RememberSuccess
+│
+├── incidents/
+│   ├── IncidentTable
+│   ├── IncidentDetail
+│   ├── IncidentTimeline
+│   └── IncidentFilters
+│
+├── memory/
+│   ├── MemorySearch
+│   ├── MemoryCard
+│   ├── MemoryStats
+│   └── RelatedIncidents
+│
+├── analytics/
+│   ├── MTTRChart
+│   ├── ServiceChart
+│   ├── SeverityChart
+│   ├── OutcomeChart
+│   └── FeedbackChart
+│
+└── common/
+    ├── Badge
+    ├── Button
+    ├── ProgressBar
+    ├── Tooltip
+    ├── Modal
+    ├── Skeleton
+    ├── EmptyState
+    ├── ErrorState
+    └── Toast
+```
+
+---
+
+# 46. Frontend State
+
+Use a simple state architecture.
+
+Possible states:
+
+```text
+idle
+collecting
+searching
+analyzing
+ready
+resolving
+remembering
+complete
+error
+```
+
+Investigation state:
+
+```ts
+type InvestigationStatus =
+  | "idle"
+  | "searching"
+  | "analyzing"
+  | "ready"
+  | "error";
+```
+
+Resolution state:
+
+```ts
+type ResolutionStatus =
+  | "idle"
+  | "saving"
+  | "indexing"
+  | "complete"
+  | "error";
+```
+
+---
+
+# 47. API Contracts
+
+## POST /incidents/investigate
+
+Request:
+
+```json
+{
+  "service": "payment-api",
+  "environment": "production",
+  "severity": "P1",
+  "description": "...",
+  "symptoms": ["CPU 97%", "Latency 4.8s"],
+  "error_message": "Connection pool exhausted"
+}
+```
+
+Response:
+
+```json
+{
+  "search": {
+    "semantic_score": 0.91,
+    "keyword_score": 0.88,
+    "overall_confidence": "high"
+  },
+  "matches": [],
+  "analysis": {
+    "diagnosis": "...",
+    "confidence": 0.91,
+    "recommended_actions": []
+  }
+}
+```
+
+---
+
+# 48. POST /incidents/resolve
+
+Request:
+
+```json
+{
+  "investigation_id": "...",
+  "resolution": "Increased pool size from 50 to 100.",
+  "resolution_time_minutes": 6,
+  "outcome": "successful",
+  "feedback": {
+    "rating": 5,
+    "useful": true,
+    "comment": "..."
+  }
+}
+```
+
+Response:
+
+```json
+{
+  "incident_number": "INC-2026-0044",
+  "status": "resolved",
+  "memory_status": "indexed"
+}
+```
+
+---
+
+# 49. Frontend Performance
+
+The frontend should remain fast.
+
+Implement:
+
+- lazy-loaded pages
+- memoized expensive charts
+- debounced global search
+- pagination for incidents
+- limited initial result sets
+- skeleton loading
+- optimistic UI only where safe
+- avoid loading entire incident history
+- cache dashboard data where appropriate
+
+Do not sacrifice hackathon reliability for premature optimization.
+
+---
+
+# 50. Demo Mode
+
+Create a controlled demo mode.
+
+Optional route:
+
+```text
+/demo
+```
+
+It should provide preconfigured scenarios:
+
+### Scenario A
+
+**Connection Pool Exhaustion**
+
+Strong historical match.
+
+### Scenario B
+
+**Novel Database Timeout**
+
+Low-confidence match.
+
+### Scenario C
+
+**HTTP 502 After Deployment**
+
+Medium-confidence match.
+
+This allows the team to recover quickly if live data entry becomes unreliable.
+
+---
+
+# 51. Demo Scenario A
+
+The UI should visually demonstrate:
+
+```text
+NEW INCIDENT
+       ↓
+HYBRID SEARCH
+       ↓
+91% MATCH
+       ↓
+AI DIAGNOSIS
+       ↓
+ENGINEER RESOLUTION
+       ↓
+INC-2026-0044
+       ↓
+MEMORY UPDATED
+```
+
+Use animations to reveal each stage.
+
+---
+
+# 52. Demo Scenario B
+
+Show:
+
+```text
+NEW INCIDENT PATTERN
+
+Best historical match:
+54%
+
+⚠ Low confidence
+
+Human verification recommended.
+```
+
+Then explain:
+
+> "OpsMemory does not pretend that every problem has an answer."
+
+This is a strong product-design point.
+
+---
+
+# 53. Frontend Git Commit Plan
+
+Use these frontend-specific commits:
+
+```text
+feat(ui): scaffold OpsMemory application shell
+
+feat(ui): add premium operations dashboard
+
+feat(ui): add incident investigation workspace
+
+feat(ui): add hybrid search evidence visualization
+
+feat(ui): add AI diagnosis and recommendation panel
+
+feat(ui): add resolution and feedback workflow
+
+feat(ui): add incident detail timeline
+
+feat(ui): add operational memory explorer
+
+feat(ui): add analytics visualizations
+
+feat(ui): add command palette and global search
+
+feat(ui): add difficult-case states
+
+style(ui): polish responsive layouts and micro-interactions
+
+test(ui): harden demo workflows
+```
+
+---
+
+# 54. Antigravity Prompt Strategy
+
+Do NOT give Antigravity:
+
+> "Build the best frontend possible."
+
+Give it focused implementation instructions.
+
+## Prompt 1 — Shell
+
+```text
+Read IMPLEMENTATION.md and FRONTEND_DESIGN.md.
+
+Build the OpsMemory React + TypeScript frontend shell.
+
+Implement:
+- premium dark operations-console aesthetic
+- global header
+- collapsible sidebar
+- footer status bar
+- routing
+- design tokens
+- reusable buttons/cards/badges
+- responsive layout
+
+Do not build backend functionality yet.
+Use realistic mock data where necessary.
+Keep components reusable.
+```
+
+## Prompt 2 — Dashboard
+
+```text
+Implement the Command Center according to FRONTEND_DESIGN.md.
+
+Include:
+- hero section
+- KPI cards
+- incident activity chart
+- severity bars
+- lifecycle funnel
+- recent incidents table
+- live activity feed
+- MongoDB/AI status indicators
+
+Use mock data initially.
+Do not change the application architecture.
+```
+
+## Prompt 3 — Investigation
+
+```text
+Implement the complete incident investigation interface.
+
+Include:
+- structured incident form
+- symptoms chips
+- severity selector
+- investigation loading stepper
+- hybrid search metrics
+- evidence cards
+- AI diagnosis
+- confidence visualization
+- recommended actions
+- low-confidence state
+
+Use API service abstractions so backend integration can be connected later.
+```
+
+## Prompt 4 — Resolution
+
+```text
+Implement Resolve & Remember.
+
+Include:
+- actual resolution input
+- resolution time
+- outcome
+- usefulness rating
+- feedback
+- animated saving/indexing state
+- generated incident number success screen
+
+Do not fake successful API calls once the backend is connected.
+```
+
+## Prompt 5 — Memory
+
+```text
+Implement the Operational Memory page.
+
+Include:
+- search
+- filters
+- memory cards
+- similarity scores
+- related incidents
+- service/severity metadata
+- successful resolution indicators
+```
+
+## Prompt 6 — Analytics
+
+```text
+Implement the analytics dashboard using reusable chart components.
+
+Include:
+- MTTR trend
+- severity distribution
+- incidents by service
+- resolution outcomes
+- recommendation usefulness
+
+Separate chart presentation from API/data logic.
+```
+
+---
+
+# 55. Important Antigravity Constraint
+
+After every generated feature:
+
+```text
+1. Run the application.
+2. Check the browser.
+3. Fix console errors.
+4. Check TypeScript errors.
+5. Check responsive layout.
+6. Commit the working state.
+```
+
+Never allow the agent to build five major screens without running the application.
+
+---
+
+# 56. Quality Checklist
+
+Before the hackathon demo:
+
+## Visual
+
+- [ ] Consistent spacing
+- [ ] Consistent typography
+- [ ] Consistent color system
+- [ ] No broken icons
+- [ ] No placeholder lorem ipsum
+- [ ] No ugly default browser controls
+- [ ] No overflowing cards
+- [ ] No horizontal scrolling
+- [ ] Responsive at laptop width
+
+## UX
+
+- [ ] Loading states
+- [ ] Error states
+- [ ] Empty states
+- [ ] Success states
+- [ ] Hover states
+- [ ] Keyboard navigation
+- [ ] Clear primary CTA
+
+## Investigation
+
+- [ ] Incident form works
+- [ ] Search results render
+- [ ] Evidence is visible
+- [ ] Confidence is clear
+- [ ] Difficult case is handled
+
+## Resolution
+
+- [ ] Resolution saves
+- [ ] Unique incident number appears
+- [ ] Feedback saves
+- [ ] Memory status appears
+- [ ] Resolved incident can be found again
+
+## Demo
+
+- [ ] Normal scenario works
+- [ ] Difficult scenario works
+- [ ] No network/API surprises
+- [ ] Demo data is seeded
+- [ ] No secrets in Git
+
+---
+
+# 57. Visual Hierarchy Rules
+
+Every page must have:
+
+1. One clear primary heading.
+2. One dominant primary action.
+3. A clear secondary information hierarchy.
+4. Important metrics above the fold.
+5. Technical detail progressively disclosed.
+
+Do not make every card equally bright.
+
+The user's eye should naturally follow:
+
+```text
+Primary action
+      ↓
+Current state
+      ↓
+Evidence
+      ↓
+Details
+```
+
+---
+
+# 58. "Premium" Design Rules
+
+Use:
+
+- subtle gradients
+- translucent panels
+- thin borders
+- soft shadows
+- restrained glow
+- small uppercase labels
+- monospace technical values
+- compact status badges
+- meaningful icons
+- animated progress
+- generous whitespace around important sections
+
+Avoid:
+
+- rainbow gradients
+- giant text everywhere
+- excessive glassmorphism
+- huge shadows
+- excessive rounded corners
+- random decorative graphics
+- animation without meaning
+
+---
+
+# 59. The Most Important Frontend Principle
+
+The UI should tell the story without the presenter needing to explain every element.
+
+A judge should be able to look at the investigation page and immediately understand:
+
+```text
+What happened?
+        ↓
+What did MongoDB find?
+        ↓
+Why does the AI believe this?
+        ↓
+What should the engineer do?
+        ↓
+What actually fixed it?
+        ↓
+Did OpsMemory remember it?
+```
+
+That is the frontend's job.
+
+---
+
+# 60. Final Visual Concept
+
+The finished application should feel like:
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ ◈ OPSMEMORY       Search...          ● MongoDB  ● AI   User │
+├──────────────┬───────────────────────────────────────────────┤
+│              │                                               │
+│ COMMAND      │  COMMAND CENTER                               │
+│ CENTER       │  AI Incident Intelligence That Learns         │
+│              │                                               │
+│ INVESTIGATE  │  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐       │
+│              │  │ 47   │ │ 43   │ │ 8.4m │ │ 91%  │       │
+│ INCIDENTS    │  └──────┘ └──────┘ └──────┘ └──────┘       │
+│              │                                               │
+│ MEMORY       │  INCIDENT ACTIVITY                            │
+│              │  ╭──────╮        ╭──────╮                    │
+│ ANALYTICS    │──╯      ╰────────╯      ╰──                  │
+│              │                                               │
+│ RUNBOOKS     │  RECENT INCIDENTS       LIVE ACTIVITY        │
+│              │  ┌─────────────────┐    ● Resolved           │
+│ SERVICES     │  │ INC-2026-0044   │    ● Search complete    │
+│              │  │ Payment API P1  │    ● New incident       │
+│ PATTERNS     │  └─────────────────┘                         │
+│              │                                               │
+│ SETTINGS     │                                               │
+│              │                                               │
+├──────────────┴───────────────────────────────────────────────┤
+│ ● Systems operational     MongoDB Atlas     Last sync 14:32 │
+└──────────────────────────────────────────────────────────────┘
+```
+
+The investigation page should then transform into a focused incident command interface rather than keeping the dashboard layout.
+
+---
+
+# 61. Final Product Principle
+
+OpsMemory should visually communicate one idea:
+
+> **Every incident leaves the system smarter than it was before.**
+
+The frontend should make that loop visible:
+
+```text
+INCIDENT
+   ↓
+SEARCH
+   ↓
+EVIDENCE
+   ↓
+AI INSIGHT
+   ↓
+ENGINEER
+   ↓
+RESOLUTION
+   ↓
+FEEDBACK
+   ↓
+MEMORY
+   ↓
+BETTER FUTURE SEARCH
+```
+
+That is what makes the application feel like a complete product rather than an AI demo.
