@@ -7,7 +7,13 @@
  *   1. Keyword Search  — weighted `$text` index (title/rootCause/symptoms/description/resolution)
  *   2. Vector Search   — Atlas `$vectorSearch` over the `embedding` field (cosine similarity)
  *
- * They are merged into a single normalized relevance score ("hybrid search").
+ * They are merged into a single normalized 0..1 relevance score ("hybrid search").
+ *
+ * Scoring is ABSOLUTE (not min-max relative) so that a weak/noisy candidate set
+ * still reports LOW/NONE confidence — required for the difficult-case demo.
+ *   keywordScore = query-token coverage across the incident's searchable text
+ *   semanticScore = Atlas vector cosine similarity (0..1)
+ *   relevance    = weighted combination (+ service-match boost)
  *
  * Robustness: if Atlas Vector Search or embeddings are unavailable (e.g. local
  * mongod for development), the service degrades gracefully to keyword-only and
@@ -23,6 +29,12 @@ const DEFAULT_TOP_K = Number(process.env.SEARCH_TOP_K) || 5;
 const CANDIDATE_LIMIT = Number(process.env.SEARCH_CANDIDATE_LIMIT) || 25;
 
 const SEARCHABLE_STATUS = "resolved";
+
+// Absolute-evidence confidence thresholds (applied to the top relevance).
+const CONFIDENCE_HIGH = 0.6;
+const CONFIDENCE_MEDIUM = 0.4;
+const CONFIDENCE_LOW = 0.15;
+const SERVICE_BOOST = 0.1;
 
 // Tri-state so a missing Atlas vector index is only probed/logged once per process.
 let vectorSearchState = "unknown"; // "unknown" | "available" | "unavailable"
@@ -52,6 +64,17 @@ const ENVIRONMENT_ALIASES = {
   dev: "Development",
   dr: "DR"
 };
+
+// Common words that would otherwise inflate token-coverage relevance.
+const STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "of", "to", "in", "on", "at", "by", "from", "with",
+  "after", "before", "during", "for", "is", "are", "was", "were", "be", "been", "being",
+  "that", "this", "these", "those", "it", "its", "as", "but", "not", "no", "do", "does",
+  "did", "has", "have", "had", "can", "could", "will", "would", "should", "may", "might",
+  "when", "while", "into", "over", "under", "again", "then", "than", "so", "such", "very",
+  "too", "also", "users", "user", "multiple", "all", "their", "they", "them", "we", "our",
+  "you", "your", "its", "any", "some", "each", "more", "most", "other", "only", "new"
+]);
 
 /**
  * Accept both the frontend snake_case contract and the stored camelCase schema.
@@ -99,6 +122,16 @@ function tokenize(text) {
   );
 }
 
+/** Tokenize and drop stopwords — used for absolute keyword coverage. */
+function tokenizeSignificant(text) {
+  const tokens = tokenize(text);
+  const significant = new Set();
+  for (const token of tokens) {
+    if (!STOPWORDS.has(token)) significant.add(token);
+  }
+  return significant;
+}
+
 function overlapCount(a, b) {
   let count = 0;
   for (const token of a) if (b.has(token)) count++;
@@ -110,26 +143,36 @@ function round(value, digits = 3) {
   return Number(value.toFixed(digits));
 }
 
-/**
- * Min-max normalize a map of { key -> rawScore } into 0..1.
- * When all values are equal (or a single result), every entry maps to 1.
- */
-function normalizeScores(rawScores) {
-  const values = [...rawScores.values()];
-  if (values.length === 0) return new Map();
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min;
+function incidentSearchableText(incident) {
+  return [
+    incident.title,
+    incident.description,
+    (incident.symptoms || []).join(" "),
+    incident.errorMessage,
+    incident.rootCause,
+    incident.resolution
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
-  const normalized = new Map();
-  for (const [key, value] of rawScores.entries()) {
-    normalized.set(key, range === 0 ? 1 : (value - min) / range);
+/**
+ * Absolute keyword relevance: fraction of significant query tokens that appear
+ * anywhere in the incident's searchable text. 0..1, independent of result set.
+ */
+function keywordCoverage(queryTokens, incident) {
+  if (queryTokens.size === 0) return 0;
+  const docTokens = tokenizeSignificant(incidentSearchableText(incident));
+  let hits = 0;
+  for (const token of queryTokens) {
+    if (docTokens.has(token)) hits++;
   }
-  return normalized;
+  return hits / queryTokens.size;
 }
 
 /**
  * Weighted keyword (text) search using the existing MongoDB `$text` index.
+ * Raw textScore is used for candidate ordering only; relevance uses coverage.
  * @returns {Promise<Map<string, {incident: object, score: number}>>}
  */
 async function keywordSearch(db, queryText) {
@@ -160,6 +203,8 @@ async function keywordSearch(db, queryText) {
 
 /**
  * Atlas Vector Search over the `embedding` field using cosine similarity.
+ * Only runs when a query vector is available. The vectorSearchScore is already
+ * an absolute 0..1 similarity for cosine.
  * @returns {Promise<Map<string, {incident: object, score: number}>>}
  */
 async function vectorSearch(db, queryVector) {
@@ -243,9 +288,10 @@ function buildMatchReasons(incident, query, queryTokens, symptomTokens, errorTok
 function computeConfidence(matches) {
   if (matches.length === 0) return "NONE";
   const top = matches[0].relevance;
-  if (top >= 0.75) return "HIGH";
-  if (top >= 0.5) return "MEDIUM";
-  return "LOW";
+  if (top >= CONFIDENCE_HIGH) return "HIGH";
+  if (top >= CONFIDENCE_MEDIUM) return "MEDIUM";
+  if (top >= CONFIDENCE_LOW) return "LOW";
+  return "NONE";
 }
 
 /**
@@ -286,21 +332,21 @@ export async function hybridSearch(rawIncident, options = {}) {
   const query = normalizeIncidentInput(rawIncident);
   const queryText = buildQueryText(query);
 
-  if (!queryText) {
-    return {
-      query,
-      search: {
-        mode: "none",
-        semanticScore: 0,
-        keywordScore: 0,
-        serviceMatch: 0,
-        environmentMatch: 0,
-        overallConfidence: "NONE",
-        totalCandidates: 0
-      },
-      matches: []
-    };
-  }
+  const emptySearch = (mode) => ({
+    query,
+    search: {
+      mode,
+      semanticScore: 0,
+      keywordScore: 0,
+      serviceMatch: 0,
+      environmentMatch: 0,
+      overallConfidence: "NONE",
+      totalCandidates: 0
+    },
+    matches: []
+  });
+
+  if (!queryText) return emptySearch("none");
 
   const [keywordResults, queryVector] = await Promise.all([
     keywordSearch(db, queryText),
@@ -314,30 +360,10 @@ export async function hybridSearch(rawIncident, options = {}) {
 
   const vectorResults = await vectorSearch(db, queryVector);
 
-  // Merge candidates by incidentNumber.
   const candidateIds = new Set([...keywordResults.keys(), ...vectorResults.keys()]);
   if (candidateIds.size === 0) {
-    return {
-      query,
-      search: {
-        mode: queryVector ? "hybrid" : "keyword",
-        semanticScore: 0,
-        keywordScore: 0,
-        serviceMatch: 0,
-        environmentMatch: 0,
-        overallConfidence: "NONE",
-        totalCandidates: 0
-      },
-      matches: []
-    };
+    return emptySearch(queryVector ? "hybrid" : "keyword");
   }
-
-  const keywordNorm = normalizeScores(
-    new Map([...keywordResults].map(([id, v]) => [id, v.score]))
-  );
-  const vectorNorm = normalizeScores(
-    new Map([...vectorResults].map(([id, v]) => [id, v.score]))
-  );
 
   const hasVector = vectorResults.size > 0;
   const hasKeyword = keywordResults.size > 0;
@@ -352,7 +378,8 @@ export async function hybridSearch(rawIncident, options = {}) {
     vectorWeight = 1;
   }
 
-  const queryTokens = tokenize(queryText);
+  const queryTokens = tokenizeSignificant(queryText);
+  const coverageTokens = new Set([...queryTokens, ...tokenizeSignificant(query.service)]);
   const symptomTokens = tokenize(query.symptoms.join(" "));
   const errorTokens = tokenize(query.errorMessage);
 
@@ -362,9 +389,13 @@ export async function hybridSearch(rawIncident, options = {}) {
     const vectorEntry = vectorResults.get(id);
     const incident = (keywordEntry || vectorEntry).incident;
 
-    const keywordScore = keywordNorm.get(id) ?? 0;
-    const semanticScore = vectorNorm.get(id) ?? 0;
-    const relevance = round(keywordWeight * keywordScore + vectorWeight * semanticScore);
+    const keywordScore = keywordCoverage(coverageTokens, incident);
+    const semanticScore = Math.min(Math.max(vectorEntry ? vectorEntry.score : 0, 0), 1);
+
+    let relevance = keywordWeight * keywordScore + vectorWeight * semanticScore;
+    const sameService =
+      query.service && incident.service && query.service.toLowerCase() === incident.service.toLowerCase();
+    if (sameService) relevance = Math.min(1, relevance + SERVICE_BOOST);
 
     matches.push({
       incidentNumber: incident.incidentNumber,
@@ -381,7 +412,7 @@ export async function hybridSearch(rawIncident, options = {}) {
       status: incident.status,
       createdAt: incident.createdAt,
       resolvedAt: incident.resolvedAt,
-      relevance,
+      relevance: round(relevance),
       semanticScore: round(semanticScore),
       keywordScore: round(keywordScore),
       matchReasons: buildMatchReasons(incident, query, queryTokens, symptomTokens, errorTokens)
@@ -397,10 +428,10 @@ export async function hybridSearch(rawIncident, options = {}) {
       ? 0
       : round(topMatches.reduce((sum, m) => sum + m[field], 0) / topMatches.length);
 
-  const sameService = topMatches.filter(
+  const sameServiceCount = topMatches.filter(
     (m) => query.service && m.service && m.service.toLowerCase() === query.service.toLowerCase()
   ).length;
-  const sameEnvironment = topMatches.filter(
+  const sameEnvironmentCount = topMatches.filter(
     (m) => query.environment && m.environment && m.environment.toLowerCase() === query.environment.toLowerCase()
   ).length;
 
@@ -410,8 +441,8 @@ export async function hybridSearch(rawIncident, options = {}) {
       mode: hasVector && hasKeyword ? "hybrid" : hasVector ? "vector" : "keyword",
       semanticScore: avg("semanticScore"),
       keywordScore: avg("keywordScore"),
-      serviceMatch: topMatches.length ? round(sameService / topMatches.length) : 0,
-      environmentMatch: topMatches.length ? round(sameEnvironment / topMatches.length) : 0,
+      serviceMatch: topMatches.length ? round(sameServiceCount / topMatches.length) : 0,
+      environmentMatch: topMatches.length ? round(sameEnvironmentCount / topMatches.length) : 0,
       overallConfidence: computeConfidence(topMatches),
       totalCandidates: candidateIds.size
     },
