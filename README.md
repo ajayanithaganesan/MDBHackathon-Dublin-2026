@@ -2,6 +2,12 @@
 
 OpsMemory is an incident-intelligence workspace that turns resolved IT incidents into searchable engineering memory. Engineers can search historical incidents, review a grounded troubleshooting brief, resolve the current incident, and save the new resolution for future searches.
 
+## Application preview
+
+![OpsMemory incident intelligence workspace](main%20page.png)
+
+The workspace brings incident intake, historical memory, grounded evidence, and **Resolve & remember** into one screen.
+
 ## What is implemented
 
 - React and Vite incident workspace with responsive investigation, resolution, and feedback flows.
