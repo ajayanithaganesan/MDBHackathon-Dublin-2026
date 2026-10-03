@@ -32,6 +32,20 @@ The workflow connects historical matches to the resolution form, then saves the 
 - Automatic fallback to MongoDB text search and evidence-only briefs when Ollama is unavailable.
 - Embedded MongoDB demo database with 12 seeded synthetic incidents, so the default demo needs no Atlas account or API key.
 
+## 🍃 MongoDB Features Implemented
+
+OpsMemory leverages MongoDB not just as a database, but as the core **incident memory & intelligence engine**:
+
+| MongoDB Feature | Implementation in OpsMemory | Purpose / Advantage |
+|:---|:---|:---|
+| **Document Data Modeling** | Rich JSON document schema storing symptoms, error codes, root causes, resolutions, dense embeddings, and feedback together. | Keeps complete operational context intact without complex multi-table SQL joins. |
+| **Schema Validation (`$jsonSchema`)** | Strict JSON schema validators on `incidents`, `counters`, and `feedback` collections with enums and regex patterns. | Ensures data integrity for severity levels, environments, and formatted incident IDs. |
+| **Unique Indexes** | Unique index `idx_unique_incident_number` on `incidents.incidentNumber`. | Guarantees zero duplicate incident numbers across concurrent resolutions. |
+| **Weighted Text Search (`$text`)** | Compound `$text` index with custom weights (`title`: 10, `rootCause`: 8, `symptoms`: 6, `description`: 5, `resolution`: 4). | Prioritizes exact technical terms (e.g. *Horizon*, *FSLogix*, *GPO*, *DNS*) during historical queries. |
+| **Atlas Vector & Hybrid Search** | Dense vector embeddings stored in `embedding` array + `$vectorSearch` pipeline stage combining cosine similarity with text scores. | Retrieves semantically similar historical incidents even when different engineers use completely different wording. |
+| **Atomic Sequences (`$inc`)** | `counters` collection using `findOneAndUpdate` with `$inc` and `upsert: true`. | Generates formatted, sequential incident numbers (`INC-2026-0001`, `INC-2026-0002`) safely without race conditions. |
+| **Aggregation Framework** | Real-time `countDocuments`, `distinct`, and query filtering on `incidents` and `feedback`. | Powers the live operational dashboard displaying remembered incidents, service coverage, and helpfulness metrics. |
+
 ## Application flow
 
 1. Enter an incident title, description, service, environment, severity, symptoms, and optional error message.
